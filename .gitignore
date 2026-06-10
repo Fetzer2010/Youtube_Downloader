@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtuelle Umgebungen
+venv/
+.venv/
+env/
+.env/
+
+# Heruntergeladene Dateien (nicht ins Repo)
+*.mp4
+*.mp3
+*.webm
+*.mkv
+*.m4a
+
+# OS-spezifisch
+.DS_Store       # macOS
+Thumbs.db       # Windows
+desktop.ini     # Windows
+
+# IDE
+.vscode/
+.idea/
+*.swp
