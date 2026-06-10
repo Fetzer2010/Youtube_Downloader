@@ -10,7 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-# Abhängigkeiten prüfen und hilfreiche Fehlermeldung ausgeben
 try:
     import yt_dlp
 except ImportError:
@@ -23,7 +22,6 @@ try:
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
-    from rich.text import Text
     from rich.rule import Rule
 except ImportError:
     print("Fehlende Abhängigkeit: rich")
@@ -32,6 +30,12 @@ except ImportError:
 
 
 console = Console()
+
+# Browser die yt-dlp unterstützt — Reihenfolge = Anzeige-Reihenfolge im Menü
+SUPPORTED_BROWSERS = ["chrome", "edge", "firefox", "chromium", "brave", "opera", "vivaldi", "safari"]
+
+# Schlüsselwort das im Fehlertext erscheint wenn YouTube Bot-Schutz greift
+BOT_ERROR_KEYWORD = "Sign in to confirm you're not a bot"
 
 
 # ─── UI-Hilfsfunktionen ───────────────────────────────────────────────────────
@@ -64,13 +68,61 @@ def show_video_info(info: dict):
     console.print()
 
 
+# ─── Browser-Cookie-Auswahl ───────────────────────────────────────────────────
+
+def ask_browser() -> str:
+    """
+    Zeigt eine Auswahl der unterstützten Browser und gibt den gewählten Namen zurück.
+    yt-dlp liest dann die Cookies direkt aus dem lokalen Browser-Profil.
+    """
+    console.print()
+    console.print(Panel(
+        "[yellow]YouTube hat den Zugriff blockiert (Bot-Schutz).[/yellow]\n"
+        "Lösung: Cookies aus einem eingeloggten Browser weitergeben.\n"
+        "[dim]Der Browser muss auf diesem Gerät installiert und bei YouTube eingeloggt sein.[/dim]",
+        title="[yellow]Authentifizierung erforderlich[/yellow]",
+        border_style="yellow",
+    ))
+    console.print()
+
+    table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
+    table.add_column("Nr.", style="cyan", width=4)
+    table.add_column("Browser", style="green")
+
+    for i, browser in enumerate(SUPPORTED_BROWSERS, start=1):
+        table.add_row(str(i), browser.capitalize())
+
+    console.print("[bold]Welchen Browser möchtest du verwenden?[/bold]")
+    console.print(table)
+    console.print()
+
+    choice = Prompt.ask(
+        "[cyan]Browser wählen[/cyan]",
+        choices=[str(i) for i in range(1, len(SUPPORTED_BROWSERS) + 1)],
+        default="1",
+    )
+
+    return SUPPORTED_BROWSERS[int(choice) - 1]
+
+
 # ─── Format- und Qualitätsauswahl ────────────────────────────────────────────
 
-def fetch_video_info(url: str) -> dict:
-    """Ruft Metadaten und verfügbare Formate von YouTube ab, ohne zu downloaden."""
-    opts = {"quiet": True, "no_warnings": True}
+def build_base_opts(browser: str | None = None) -> dict:
+    """Erstellt die gemeinsamen yt-dlp Basis-Optionen, optional mit Browser-Cookies."""
+    opts: dict = {"quiet": True, "no_warnings": True}
+    if browser:
+        # Tuple-Format: (browser, profile, keyring, container) — nur Name nötig
+        opts["cookiesfrombrowser"] = (browser,)
+    return opts
+
+
+def fetch_video_info(url: str, browser: str | None = None) -> dict:
+    """
+    Ruft Metadaten und verfügbare Formate von YouTube ab, ohne zu downloaden.
+    Bei gesetztem `browser` werden dessen Cookies zur Authentifizierung genutzt.
+    """
+    opts = build_base_opts(browser)
     with yt_dlp.YoutubeDL(opts) as ydl:
-        # download=False → nur Metadaten abrufen
         return ydl.extract_info(url, download=False)
 
 
@@ -90,17 +142,14 @@ def ask_video_quality(info: dict) -> str:
     """
     formats = info.get("formats", [])
 
-    # Alle eindeutigen Auflösungen sammeln (nur echte Video-Streams)
     heights = sorted(
         {f["height"] for f in formats if f.get("vcodec") != "none" and f.get("height")},
         reverse=True,
     )
 
     if not heights:
-        # Kein Format mit Auflösungsinfo gefunden — bestes verfügbares nehmen
         return "bestvideo+bestaudio/best"
 
-    # Qualitätstabelle anzeigen
     table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
     table.add_column("Nr.", style="cyan", width=4)
     table.add_column("Auflösung", style="green")
@@ -119,7 +168,6 @@ def ask_video_quality(info: dict) -> str:
     )
 
     selected = heights[int(choice) - 1]
-    # Bestes Video bis zur gewählten Auflösung + bestes Audio kombinieren
     return f"bestvideo[height<={selected}]+bestaudio/best[height<={selected}]"
 
 
@@ -127,9 +175,7 @@ def ask_video_quality(info: dict) -> str:
 
 def ask_output_path() -> Path:
     """Fragt nach dem Zielordner und erstellt ihn bei Bedarf."""
-    # Standardpfad: ~/Downloads (auf allen Betriebssystemen verfügbar)
     default = str(Path.home() / "Downloads")
-
     raw = Prompt.ask("[cyan]Speicherort[/cyan]", default=default)
     path = Path(raw).expanduser().resolve()
 
@@ -145,43 +191,51 @@ def ask_output_path() -> Path:
 
 def ask_filename(default_title: str) -> str:
     """Fragt nach dem Dateinamen (ohne Endung) und bereinigt unerlaubte Zeichen."""
-    # Zeichen entfernen, die auf Windows/macOS/Linux Probleme machen
     safe_default = "".join(
         c for c in default_title if c.isalnum() or c in (" ", "-", "_", ".")
     ).strip()
-
     return Prompt.ask("[cyan]Dateiname (ohne Endung)[/cyan]", default=safe_default)
 
 
 # ─── Download ─────────────────────────────────────────────────────────────────
 
-def build_ydl_opts(format_selector: str, output_template: str, is_audio: bool) -> dict:
-    """Erstellt die yt-dlp Optionen abhängig vom gewählten Format."""
-    opts = {
-        "format":      format_selector,
-        "outtmpl":     output_template,
-        # Fortschrittsanzeige von yt-dlp selbst nutzen
-        "quiet":       False,
-        "no_warnings": True,
-        # Zusammenführen von Video+Audio-Streams mit ffmpeg falls vorhanden
+def build_ydl_opts(
+    format_selector: str,
+    output_template: str,
+    is_audio: bool,
+    browser: str | None = None,
+) -> dict:
+    """Erstellt die vollständigen yt-dlp Optionen für den Download."""
+    opts = build_base_opts(browser)
+    opts.update({
+        "format":              format_selector,
+        "outtmpl":             output_template,
+        "quiet":               False,
+        "no_warnings":         True,
         "merge_output_format": "mp4" if not is_audio else None,
-    }
+    })
 
     if is_audio:
         opts["postprocessors"] = [{
             "key":              "FFmpegExtractAudio",
             "preferredcodec":   "mp3",
-            "preferredquality": "192",  # 192 kbps — guter Kompromiss aus Qualität & Größe
+            "preferredquality": "192",
         }]
 
     return opts
 
 
-def download(url: str, format_selector: str, output_path: Path, filename: str, is_audio: bool):
+def download(
+    url: str,
+    format_selector: str,
+    output_path: Path,
+    filename: str,
+    is_audio: bool,
+    browser: str | None = None,
+):
     """Führt den eigentlichen Download durch."""
-    # %(ext)s wird von yt-dlp automatisch durch die korrekte Endung ersetzt
     template = str(output_path / filename) + ".%(ext)s"
-    opts = build_ydl_opts(format_selector, template, is_audio)
+    opts = build_ydl_opts(format_selector, template, is_audio, browser)
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
@@ -192,17 +246,31 @@ def download(url: str, format_selector: str, output_path: Path, filename: str, i
 def main():
     show_header()
 
-    # Schritt 1: YouTube-URL eingeben
+    # Schritt 1: URL
     url = Prompt.ask("[cyan]YouTube-URL[/cyan]")
     console.print()
 
-    # Schritt 2: Video-Metadaten abrufen
+    # Schritt 2: Video-Metadaten abrufen — bei Bot-Fehler automatisch Browser fragen
+    browser: str | None = None
     console.print("[dim]Lade Video-Informationen …[/dim]")
     try:
         info = fetch_video_info(url)
     except yt_dlp.utils.DownloadError as e:
-        console.print(f"\n[red]Fehler: {e}[/red]")
-        sys.exit(1)
+        if BOT_ERROR_KEYWORD not in str(e):
+            console.print(f"\n[red]Fehler: {e}[/red]")
+            sys.exit(1)
+
+        # Bot-Schutz erkannt → Browser-Cookies anfordern und nochmal versuchen
+        browser = ask_browser()
+        console.print(f"\n[dim]Lade Video-Informationen mit {browser.capitalize()}-Cookies …[/dim]")
+        try:
+            info = fetch_video_info(url, browser)
+        except yt_dlp.utils.DownloadError as e2:
+            console.print(f"\n[red]Fehler: {e2}[/red]")
+            console.print(
+                "[dim]Stelle sicher, dass du in diesem Browser bei YouTube eingeloggt bist.[/dim]"
+            )
+            sys.exit(1)
 
     show_video_info(info)
 
@@ -211,7 +279,7 @@ def main():
     is_audio = download_type == "audio"
     console.print()
 
-    # Schritt 4: Qualität / Auflösung wählen
+    # Schritt 4: Qualität wählen
     if is_audio:
         format_selector = "bestaudio/best"
     else:
@@ -223,28 +291,24 @@ def main():
     console.print()
 
     # Schritt 6: Dateiname
-    video_title = info.get("title", "download")
-    filename = ask_filename(video_title)
+    filename = ask_filename(info.get("title", "download"))
     console.print()
 
-    # Schritt 7: Download starten
+    # Schritt 7: Download
     console.print(Rule("[bold green]Download[/bold green]"))
     console.print()
 
     try:
-        download(url, format_selector, output_path, filename, is_audio)
+        download(url, format_selector, output_path, filename, is_audio, browser)
     except yt_dlp.utils.DownloadError as e:
         console.print(f"\n[red]Download fehlgeschlagen: {e}[/red]")
         console.print("[dim]Tipp: Stelle sicher, dass ffmpeg installiert ist (für HD-Videos und Audio).[/dim]")
         sys.exit(1)
 
-    # Erfolgsmeldung
     ext = "mp3" if is_audio else "mp4"
-    final_file = output_path / f"{filename}.{ext}"
-
     console.print()
     console.print(Panel(
-        f"[green]Erfolgreich gespeichert![/green]\n[dim]{final_file}[/dim]",
+        f"[green]Erfolgreich gespeichert![/green]\n[dim]{output_path / filename}.{ext}[/dim]",
         border_style="green",
     ))
     console.print()
