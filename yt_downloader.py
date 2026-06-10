@@ -18,6 +18,14 @@ except ImportError:
     sys.exit(1)
 
 try:
+    import static_ffmpeg
+    # Fügt die mitgelieferten ffmpeg-Binaries zum PATH hinzu, falls ffmpeg nicht
+    # systemweit installiert ist. Beim ersten Aufruf werden die Binaries heruntergeladen.
+    static_ffmpeg.add_paths(weak=True)
+except ImportError:
+    pass  # Nicht installiert — systemweites ffmpeg wird verwendet (falls vorhanden)
+
+try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm

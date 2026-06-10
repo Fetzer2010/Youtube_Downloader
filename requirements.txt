@@ -1,3 +1,4 @@
 # Kern-Abhängigkeiten
-yt-dlp>=2024.1.0   # YouTube-Download-Engine
-rich>=13.0.0        # Terminal-Styling und interaktive Prompts
+yt-dlp>=2024.1.0      # YouTube-Download-Engine
+rich>=13.0.0           # Terminal-Styling und interaktive Prompts
+static-ffmpeg>=2.5     # Stellt ffmpeg-Binaries automatisch bereit (kein manuelles Install nötig)
