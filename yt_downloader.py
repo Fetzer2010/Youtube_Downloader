@@ -34,9 +34,6 @@ console = Console()
 # Browser die yt-dlp unterstützt — Reihenfolge = Anzeige-Reihenfolge im Menü
 SUPPORTED_BROWSERS = ["chrome", "edge", "firefox", "chromium", "brave", "opera", "vivaldi", "safari"]
 
-# Schlüsselwort das im Fehlertext erscheint wenn YouTube Bot-Schutz greift
-BOT_ERROR_KEYWORD = "Sign in to confirm you're not a bot"
-
 
 # ─── UI-Hilfsfunktionen ───────────────────────────────────────────────────────
 
@@ -250,17 +247,14 @@ def main():
     url = Prompt.ask("[cyan]YouTube-URL[/cyan]")
     console.print()
 
-    # Schritt 2: Video-Metadaten abrufen — bei Bot-Fehler automatisch Browser fragen
+    # Schritt 2: Video-Metadaten abrufen — bei Fehler Browser-Cookie-Fallback anbieten
     browser: str | None = None
     console.print("[dim]Lade Video-Informationen …[/dim]")
     try:
         info = fetch_video_info(url)
-    except yt_dlp.utils.DownloadError as e:
-        if BOT_ERROR_KEYWORD not in str(e):
-            console.print(f"\n[red]Fehler: {e}[/red]")
-            sys.exit(1)
-
-        # Bot-Schutz erkannt → Browser-Cookies anfordern und nochmal versuchen
+    except yt_dlp.utils.DownloadError:
+        # Erster Versuch fehlgeschlagen (häufigste Ursache: YouTube Bot-Schutz)
+        # → Browser-Cookies als Fallback anbieten
         browser = ask_browser()
         console.print(f"\n[dim]Lade Video-Informationen mit {browser.capitalize()}-Cookies …[/dim]")
         try:
