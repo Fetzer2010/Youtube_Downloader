@@ -153,7 +153,7 @@ def ask_video_quality(info: dict) -> str:
     )
 
     if not heights:
-        return "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo+bestaudio/best"
+        return "bestvideo+bestaudio/best"
 
     table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
     table.add_column("Nr.", style="cyan", width=4)
@@ -173,10 +173,7 @@ def ask_video_quality(info: dict) -> str:
     )
 
     selected = heights[int(choice) - 1]
-    return (
-        f"bestvideo[vcodec^=avc1][height<={selected}]+bestaudio[acodec^=mp4a]"
-        f"/bestvideo[height<={selected}]+bestaudio/best[height<={selected}]"
-    )
+    return f"bestvideo[height<={selected}]+bestaudio/best[height<={selected}]"
 
 
 # ─── Pfad- und Dateinamen-Eingabe ─────────────────────────────────────────────
