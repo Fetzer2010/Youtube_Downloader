@@ -5,19 +5,13 @@ Läuft auf Windows, macOS und Linux.
 
 ## Voraussetzungen
 
-- Python 3.8+
-- [ffmpeg](https://ffmpeg.org/download.html) — für HD-Downloads und MP3-Extraktion
+- Python 3.10+
+- ffmpeg — wird automatisch über `static-ffmpeg` mitgeliefert, kein manuelles Install nötig
 
 ## Installation
 
 ```bash
-# 1. Abhängigkeiten installieren
 pip install -r requirements.txt
-
-# 2. (Optional) ffmpeg installieren
-#    Windows:  winget install ffmpeg
-#    macOS:    brew install ffmpeg
-#    Linux:    sudo apt install ffmpeg
 ```
 
 ## Benutzung
@@ -35,5 +29,6 @@ Das Tool fragt dann Schritt für Schritt:
 
 ## Hinweise
 
-- Ohne ffmpeg sind nur Qualitäten bis 720p ohne separaten Download verfügbar
-- MP3-Extraktion erfordert zwingend ffmpeg
+- Videos werden immer als H.264/AAC MP4 gespeichert — kompatibel mit allen gängigen Geräten und Playern
+- Audio wird als MP3 mit 192 kbit/s gespeichert
+- Falls YouTube den Zugriff blockiert, bietet das Tool einen Cookie-Fallback über den Browser an

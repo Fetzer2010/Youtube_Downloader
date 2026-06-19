@@ -153,7 +153,7 @@ def ask_video_quality(info: dict) -> str:
     )
 
     if not heights:
-        return "bestvideo+bestaudio/best"
+        return "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo+bestaudio/best"
 
     table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 2))
     table.add_column("Nr.", style="cyan", width=4)
@@ -173,7 +173,10 @@ def ask_video_quality(info: dict) -> str:
     )
 
     selected = heights[int(choice) - 1]
-    return f"bestvideo[height<={selected}]+bestaudio/best[height<={selected}]"
+    return (
+        f"bestvideo[vcodec^=avc1][height<={selected}]+bestaudio[acodec^=mp4a]"
+        f"/bestvideo[height<={selected}]+bestaudio/best[height<={selected}]"
+    )
 
 
 # ─── Pfad- und Dateinamen-Eingabe ─────────────────────────────────────────────
@@ -226,6 +229,17 @@ def build_ydl_opts(
             "preferredcodec":   "mp3",
             "preferredquality": "192",
         }]
+    else:
+        # Re-encode to H.264/AAC so every device can play the file.
+        # Preferred avc1 format selector already avoids re-encoding in most cases,
+        # but this guarantees compatibility when only VP9 or AV1 streams are available.
+        opts["postprocessor_args"] = {
+            "merger": [
+                "-c:v", "libx264", "-crf", "20", "-preset", "fast",
+                "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart",
+            ]
+        }
 
     return opts
 
