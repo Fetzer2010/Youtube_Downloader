@@ -1,4 +1,8 @@
 # Kern-Abhängigkeiten
 yt-dlp>=2024.1.0      # YouTube-Download-Engine
-rich>=13.0.0           # Terminal-Styling und interaktive Prompts
-static-ffmpeg>=2.5     # Stellt ffmpeg-Binaries automatisch bereit (kein manuelles Install nötig)
+rich>=13.0.0          # Terminal-Styling und interaktive Prompts
+
+# Stellt ffmpeg-Binaries automatisch bereit (kein manuelles Install nötig).
+# >=3.0 ist zwingend: ältere Versionen liefern ausschließlich x86-64-Binaries
+# und schlagen auf Apple Silicon sowie Linux ARM64 (Raspberry Pi & Co) fehl.
+static-ffmpeg>=3.0

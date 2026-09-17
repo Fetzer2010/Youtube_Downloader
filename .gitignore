@@ -19,11 +19,16 @@ env/
 *.webm
 *.mkv
 *.m4a
+*.part
+*.ytdl
 
-# OS-spezifisch
-.DS_Store       # macOS
-Thumbs.db       # Windows
-desktop.ini     # Windows
+# OS-spezifisch (Kommentare müssen auf einer eigenen Zeile stehen —
+# ".DS_Store  # macOS" wäre ein Literal-Pattern und würde nichts ignorieren)
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
