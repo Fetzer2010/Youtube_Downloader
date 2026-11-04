@@ -1,8 +1,8 @@
-# Kern-Abhängigkeiten
-yt-dlp>=2024.1.0      # YouTube-Download-Engine
-rich>=13.0.0          # Terminal-Styling und interaktive Prompts
+# Core dependencies
+yt-dlp>=2025.1.1      # YouTube download engine (current releases require Python 3.11+)
+rich>=13.0.0          # Terminal styling and interactive prompts
 
-# Stellt ffmpeg-Binaries automatisch bereit (kein manuelles Install nötig).
-# >=3.0 ist zwingend: ältere Versionen liefern ausschließlich x86-64-Binaries
-# und schlagen auf Apple Silicon sowie Linux ARM64 (Raspberry Pi & Co) fehl.
+# Provides ffmpeg binaries automatically (no manual install needed).
+# >=3.0 is mandatory: older versions only ship x86-64 binaries and fail on
+# Apple Silicon and Linux ARM64 (Raspberry Pi & co).
 static-ffmpeg>=3.0

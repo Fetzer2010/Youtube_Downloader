@@ -7,13 +7,13 @@ dist/
 build/
 .eggs/
 
-# Virtuelle Umgebungen
+# Virtual environments
 venv/
 .venv/
 env/
 .env/
 
-# Heruntergeladene Dateien (nicht ins Repo)
+# Downloaded files (keep them out of the repo)
 *.mp4
 *.mp3
 *.webm
@@ -22,8 +22,8 @@ env/
 *.part
 *.ytdl
 
-# OS-spezifisch (Kommentare müssen auf einer eigenen Zeile stehen —
-# ".DS_Store  # macOS" wäre ein Literal-Pattern und würde nichts ignorieren)
+# OS-specific (comments must be on their own line —
+# ".DS_Store  # macOS" would be a literal pattern and ignore nothing)
 # macOS
 .DS_Store
 # Windows
@@ -34,3 +34,7 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Local tooling (personal settings, pinned local Python version)
+.claude/
+.python-version
